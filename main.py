@@ -1,184 +1,60 @@
-#!/usr/bin/env python
-# coding: utf-8
-import argparse
-import sys
-import os
-from pathlib import Path
-from src.cmds import uno_lnk, run_auto, manage_env_cfg
-from src.utils import util
-
-# region parser
-# region        Create Parsers
+import requests
+from urllib.parse import urlencode
+from random import choice
 
 
-def _create_parser(name: str) -> argparse.ArgumentParser:
-    return argparse.ArgumentParser(description=name)
+def post():
+    base_url = 'https://learning.cbit.com.cn/www/lessonDetails/updateLessonProcessPC.do'
+    data = {
+        'lessonId': '630d845d295b4a9ebcf65f74a4dbc34b',
+        'lessonItemId': 'ce63b66eb1154bcb8161cce8c4c1ddbc',
+        'process': '-2',
+        'tcid': 'null',
+        'totalTime': '2050.2',
+        'suspendTime': '2050.2',
+        'studytime': '2050.2'
+    }
+    query_string = urlencode(data)
+    url = "learning.cbit.com.cn/www/lessonDetails/updateLessonProcessPC.do" + query_string
+    print(url)
+    token = 'eyJ0eXAiOiJKV1QiLCJ0eXBlIjoiSldUIiwiZW5jcnlwdGlvbiI6IkhTMjU2IiwiYWxnIjoiSFMyNTYifQ.eyJUaW1lIjoxNjg0MTE0MjM1MTEwLCJleHAiOjE2ODQyMDA2MzUsInVzZXJJZCI6IjNkY2U4ZmUxMWU0ZjRmMjdiYTJlNTViMTIzZTkzOWU2IiwidXNlckNvZGUiOiIxOTE4NDIzNjI0NCJ9.M3bqchWtDWr1PDufAY06Kanu7SfbczTdEg8cug0Jd1g'
+    cookie = 'AlteonP=0a140c030aff050635b479941b13; JSESSIONID=kEMdB9-CXKAsuJIqMWycu9cTiCdFfb9o-J4hkIWIMTTsHwtJ8MZx!-1212995460',
+    # 3.随机设置请求头信息
+    headers = {
+        'Accept': '*/*',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6,zh-TW;q=0.5',
+        'Connection': 'keep-alive',
+        'Content-Length': '0',
+        'Cookie': cookie,
+        'Host': 'learning.cbit.com.cn',
+        'Origin': 'https://learning.cbit.com.cn',
+        'Referer': 'https://learning.cbit.com.cn/www/views/lesson/mp4Play.html?le_id=630d845d295b4a9ebcf65f74a4dbc34b&itemid=2edde657a8194a71b5e34372e1e3bb49&lindex=1',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.0.0',
+        'X-Requested-With': 'XMLHttpRequest',
+        'apikey': '2456269a445b4a18afad29fd12714da2',
+        'isapp': '0',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': "Windows",
+        'token': token
+    }
+    # 5.发送请求并打印返回值
+
+    response = requests.post(url, data=data, headers=headers)
+
+    print(response.text)
 
 
-# endregion     Create Parsers
+def get_lessons():
+    base_url = 'https://learning.cbit.com.cn/www/onlineTraining/trainingdetails.do'
+    data = {
+        'id': 'e491bf3476e64fe19f61e472c7a41480'
+    }
+    url = base_url + urlencode(data)
+    
 
-# region        process arg command
-def _args_cmd_link(parser: argparse.ArgumentParser) -> None:
-    add_grp = parser.add_argument_group()
-    add_grp.add_argument(
-        "-a",
-        "--add",
-        help="Add uno links to virtual environment.",
-        action="store_true",
-        dest="add",
-        default=False,
-    )
-
-    add_grp.add_argument(
-        "-s",
-        "--uno-src",
-        help="Optional source directory that contains uno.py and unohelper.py. If ommited then defaults are used.",
-        action="store",
-        dest="src_dir",
-        default=None,
-    )
-    parser.add_argument(
-        "-r",
-        "--remove",
-        help="Remove uno links to virtual environment.",
-        action="store_true",
-        dest="remove",
-        default=False,
-    )
-
-
-def _args_cmd_auto(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "-p",
-        "--process",
-        help="Path to file to run such as ex/auto/writer/hello_world/main.py",
-        action="store",
-        dest="process_file",
-        required=True,
-    )
-
-
-def _args_cmd_toggle_evn(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "-t",
-        "--toggle-env",
-        help="Toggles the virtual environment to and from LibreOffice environment (aka. the UNO environment)",
-        action="store_true",
-        dest="toggle_env",
-        default=False,
-    )
-    parser.add_argument(
-        "-u",
-        "--uno-env",
-        help="Displays if the current Virtual Environment is the UNO Environment or not.",
-        action="store_true",
-        dest="uno_env",
-        default=False,
-    )
-    parser.add_argument(
-        "-c",
-        "--custom-env",
-        help="Set a custom environment. cfg file must must be manually configured.",
-        action="store",
-        dest="cusom_env",
-        required=False,
-    )
-
-
-def _args_action_cmd_link(
-    a_parser: argparse.ArgumentParser, args: argparse.Namespace
-) -> None:
-    if not (args.add or args.remove):
-        a_parser.error("No action requested, add --add or --remove")
-    if args.add:
-        uno_lnk.add_links(args.src_dir)
-    elif args.remove:
-        uno_lnk.remove_links()
-
-
-def _args_action_cmd_auto(
-    a_parser: argparse.ArgumentParser, args: argparse.Namespace
-) -> None:
-    pargs = str(args.process_file).split()
-    if sys.platform == "win32":
-        run_auto.run_lo_py(*pargs)
-    else:
-        run_auto.run_py(*pargs)
-
-
-def _args_action_cmd_toggle_env(a_parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    if args.uno_env:
-        if manage_env_cfg.is_env_uno_python():
-            print("UNO Environment")
-        else:
-            print("NOT a UNO Environment")
-        return
-    if args.toggle_env:
-        manage_env_cfg.toggle_cfg()
-        return
-    if args.cusom_env:
-        manage_env_cfg.toggle_cfg(suffix=args.cusom_env)
-
-
-def _args_process_cmd(
-    a_parser: argparse.ArgumentParser, args: argparse.Namespace
-) -> None:
-    if args.command == "cmd-link":
-        _args_action_cmd_link(a_parser=a_parser, args=args)
-    elif args.command == "auto":
-        _args_action_cmd_auto(a_parser=a_parser, args=args)
-    elif args.command == "env":
-        _args_action_cmd_toggle_env(a_parser=a_parser, args=args)
-    else:
-        a_parser.print_help()
-
-
-# endregion        process arg command
-# endregion parser
-
-
-def _main() -> int:
-    # for debugging
-    args = "auto --process"
-    # args = "auto -p ex/auto/writer/hello_world/main.py"
-    sys.argv.extend(args.split())
-    extra = "ex/auto/writer/odev_doc_convert/start.py -e 'pdf' -f 'README.md'"
-    sys.argv.append(extra)
-
-    return main()
-
-
-def main() -> int:
-    os.environ["project_root"] = str(Path(__file__).parent)
-    os.environ["env-site-packages"] = str(util.get_site_packeges_dir())
-    parser = _create_parser("main")
-    subparser = parser.add_subparsers(dest="command")
-
-    if os.name != "nt":
-        # linking is not useful in Windows.
-        cmd_link = subparser.add_parser(
-            name="cmd-link",
-            help="Add/Remove links in virtual environments to uno files.",
-        )
-        _args_cmd_link(parser=cmd_link)
-
-    if sys.platform == "win32":
-        cmd_env_toggle = subparser.add_parser(
-            name="env",
-            help="Manage Virtual Environment configuration.",
-        )
-        _args_cmd_toggle_evn(parser=cmd_env_toggle)
-
-    cmd_auto = subparser.add_parser(name="auto", help="Run an automation script")
-
-    _args_cmd_auto(parser=cmd_auto)
-
-    # region Read Args
-    args = parser.parse_args()
-    # endregion Read Args
-    _args_process_cmd(a_parser=parser, args=args)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == '__main__':
+    post()
