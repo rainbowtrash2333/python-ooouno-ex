@@ -7,6 +7,7 @@ from ooodev.utils.gui import GUI
 from ooodev.utils.type_var import PathOrStr
 from ooodev.calc import CalcDoc, CalcSheet, ZoomKind, CalcSheetView
 from ooodev.office.calc import Calc
+from typing import Tuple
 
 
 class Workbook:
@@ -44,9 +45,9 @@ class Workbook:
             Lo.close_office()
             raise
 
-    def get_range_value(self,sheet_n:int, range_name:str)->[]:
+    def get_range_value(self,sheet_n:int, range_name:str)->Tuple[Tuple, ...]:
         cell_rng = Calc.get_range_obj(range_name="A1:B2")
-        v = self.doc.sheets[sheet_n].get_array(range_obj=cell_rng)
+        return self.doc.sheets[sheet_n].get_array(range_obj=cell_rng)
 
     def close(self):
         self.doc.close_doc()
@@ -54,7 +55,7 @@ class Workbook:
         return 0
 
 
-    def get_used_value(self,sheet_n:int):
+    def get_used_value(self,sheet_n:int)->Tuple[Tuple, ...]:
 
         used_rng = self.doc.sheets[sheet_n].find_used_range_obj()
         # start_idx = used_rng.start_row_index

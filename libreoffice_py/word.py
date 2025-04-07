@@ -6,9 +6,10 @@ from ooodev.loader import Lo
 from ooodev.write import WriteDoc
 from ooodev.utils.info import Info
 from ooodev.write import Write
-from com.sun.star.util import XSearchable,XReplaceDescriptor,XReplaceable
+from com.sun.star.util import XSearchable, XReplaceDescriptor, XReplaceable
 from com.sun.star.text import XTextRange
 from typing import Sequence
+
 
 class Word:
     def __init__(self, read_only: bool = False, filepath: str | None = None, visible: bool = True) -> None:
@@ -24,8 +25,6 @@ class Word:
                 self.doc = WriteDoc.open_doc(fnm=self._input_fnm, loader=loader, visible=self._visible)
             else:
                 self.doc = WriteDoc.create_doc(visible=True)
-
-
         except Exception:
             Lo.close_office()
             raise
@@ -91,16 +90,13 @@ class Word:
             raise
         return result
 
-    def replace_words(self,old_words: Sequence[str], new_words: Sequence[str]) -> int:
-        replaceable = self.doc.qi(XReplaceable, True)
-        replace_desc = Lo.qi(XReplaceDescriptor, replaceable.createSearchDescriptor())
+    def replace_words(self, old_words: Sequence[str], new_words: Sequence[str]) -> int:
+        replace_n = 0
+        for i in range(len(old_words)):
+            replace_n = replace_n + self.replace_word(old_words[i], new_words[i])
+        return replace_n
 
-        for old, new in zip(old_words, new_words):
-            replace_desc.setSearchString(old)
-            replace_desc.setReplaceString(new)
-        return replaceable.replaceAll(replace_desc)
-
-    def replace_word(self,old_word: str, new_word: str) -> int:
+    def replace_word(self, old_word: str, new_word: str) -> int:
         replaceable = self.doc.qi(XReplaceable, True)
         replace_desc = Lo.qi(XReplaceDescriptor, replaceable.createSearchDescriptor())
         replace_desc.setSearchString(old_word)
