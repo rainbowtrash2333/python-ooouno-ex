@@ -1,15 +1,13 @@
 from __future__ import annotations
-import uno
-from ooodev.calc import CalcDoc
+
 from ooodev.utils.file_io import FileIO
 from ooodev.loader import Lo
 from ooodev.write import WriteDoc
-from ooodev.utils.info import Info
 from ooodev.write import Write
 from com.sun.star.util import XSearchable, XReplaceDescriptor, XReplaceable
 from com.sun.star.text import XTextRange
 from typing import Sequence
-
+from officeLoader import OfficeLoader
 
 class Word:
     def __init__(self, read_only: bool = False, filepath: str | None = None, visible: bool = True) -> None:
@@ -19,7 +17,8 @@ class Word:
         self.doc = None
 
         try:
-            loader = Lo.load_office(Lo.ConnectSocket())
+            office_loader = OfficeLoader()
+            loader = office_loader.get_loader()
             if self._filepath:
                 self._input_fnm = FileIO.get_absolute_path(self._filepath)
                 self.doc = WriteDoc.open_doc(fnm=self._input_fnm, loader=loader, visible=self._visible)
@@ -47,7 +46,7 @@ class Word:
 
     def close(self) -> None:
         self.doc.close_doc()
-        Lo.close_office()
+
 
     def get_content_text(self) -> str:
         # iterate through the document contents, printing all the text portions in each paragraph
@@ -102,3 +101,4 @@ class Word:
         replace_desc.setSearchString(old_word)
         replace_desc.setReplaceString(new_word)
         return replaceable.replaceAll(replace_desc)
+

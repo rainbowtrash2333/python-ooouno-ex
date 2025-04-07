@@ -1,7 +1,7 @@
 from workbook import Workbook
 from word import Word
 from ooodev.office.calc import Calc
-from util import array2df,process_value_to_str
+from myutil import array2df,process_value_to_str
 import pandas as pd
 from typing import Sequence
 
@@ -17,10 +17,11 @@ if __name__ == '__main__':
     values_list: Sequence[str] = df['value'].tolist()
     print(labels_list)
     print(values_list)
-    for i in range(len(labels_list)):
-        word.replace_word(labels_list[i], values_list[i])
-    # word.replace_words(['$(b1)'], '111222')
-    # word.replace_words(labels_list,values_list)
+    # for i in range(len(labels_list)):
+    #     word.replace_word(labels_list[i], values_list[i])
+    # # word.replace_words(['$(b1)'], '111222')
+    word.replace_words(labels_list,values_list)
+
     # print(r)
     # word.save()
     # print(r)
