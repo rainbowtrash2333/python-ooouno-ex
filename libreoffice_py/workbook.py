@@ -13,7 +13,7 @@ from ooodev.format.calc.direct.cell.borders import BorderLineKind
 from ooodev.formatters.formatter_table import FormatterTable
 from ooodev.utils.color import CommonColor
 from ooodev.format.calc.direct.cell.borders import Side
-from myutil import convert_range_name_to_list, convert_cell_name_to_list
+from myutil import *
 import pandas as pd
 
 
@@ -113,6 +113,25 @@ class Workbook:
             else:
                 if next_row_idx > start_row_idx + 1:
                     sheet.get_range(col_start=col_idx, row_start=start_row_idx, col_end=col_idx,
-                                    row_end=next_row_idx-1).merge_cells()
+                                    row_end=next_row_idx - 1).merge_cells()
                 start_row_idx = next_row_idx
                 next_row_idx = next_row_idx + 1
+
+    def sum_col(self, sheet_n: int, sum_cell_name: str, end_cell_name: None | str = None) -> None:
+        sheet = self.doc.get_sheet(idx=sheet_n)
+        cell = sheet.get_cell(cell_name=sum_cell_name)
+        sum_cell_list = convert_cell_name_to_list(sum_cell_name)
+        col_name = get_cell_col_name(cell_name=sum_cell_name)
+        range_name = None
+        if end_cell_name is None:
+            used_rng = sheet.find_used_range_obj()
+            start_idx = sum_cell_list[1] + 2
+            end_idx = used_rng.end_row_index+1
+            range_name = f"{col_name}{start_idx}:{col_name}{end_idx}"
+        else:
+            used_list = convert_cell_name_to_list(end_cell_name)
+            end_idx = used_list[1]+1
+            start_idx = sum_cell_list[1] + 2 if sum_cell_list[1] < end_idx else sum_cell_list[1]
+            range_name = f"{col_name}{start_idx}:{col_name}{end_idx}"
+        print(f"=SUM({range_name})")
+        cell.set_val(f"=SUM({range_name})")

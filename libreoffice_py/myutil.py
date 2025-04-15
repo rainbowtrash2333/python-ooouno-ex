@@ -5,7 +5,6 @@ from typing import Union
 import re
 
 
-
 def number_to_rounded_str(n: Union[int, float], digits: int = 2) -> str:
     if isinstance(n, int):
         return str(n)
@@ -96,6 +95,15 @@ def process_value_to_str(row: [], decimal_places: int = 2) -> str:
     else:
         return number_to_rounded_str(value, decimal_places)  # 未知type，不处理
 
+
+def get_cell_col_name(cell_name: str) -> str:
+    match = re.match(r"^([A-Za-z]+)(\d+)$", cell_name)
+    if not match:
+        raise ValueError("Invalid input format")
+    letters = match.group(1).upper()
+    return letters
+
+
 def convert_cell_name_to_list(cell_name: str) -> list:
     # 使用正则表达式分割字母和数字部分
     match = re.match(r"^([A-Za-z]+)(\d+)$", cell_name)
@@ -163,6 +171,7 @@ def convert_list_to_range_name(lst):
         n = n // 26
 
     return f"{letters}{row}"
+
 
 def reorder_dataframe_columns(df, new_order):
     # 检查new_order中的列是否都存在于DataFrame中

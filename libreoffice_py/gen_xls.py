@@ -15,44 +15,69 @@ def foo():
     sheet1_props = wb_src.doc.sheets[0].get_custom_properties()
 
 
-def gen_xls1(template_path: str, data_path: str, date: str):
-    result_path = os.path.join(data_path, f"{date}重点客户风险排查情况表.xlsx")
+def gen_xls(src_file: str, tgt_wb: Workbook, sheet_n, data_cell_name: str, date_str: str = None,
+            date_cell_name: str = None,
+            order: [] = None,
+            sum_cells_list: [] = None, merge_list: [] = None) -> None:
+    src_wb = Workbook(read_only=True, filepath=src_file, visible=False)
+    data = array2df(src_wb.get_used_value(0))
+    if order is not None:
+        data = reorder_dataframe_columns(data, order)
+
+    src_wb.close()
+    tgt_wb.set_pandas_range(data, sheet_n, data_cell_name)
+    if date_str is not None and date_cell_name is not None:
+        tgt_wb.doc.sheets[sheet_n][data_cell_name].value = date_str
+    if sum_cells_list is not None:
+        for cell in sum_cells_list:
+            tgt_wb.sum_col(sheet_n, cell)
+    if merge_list is not None:
+        for cell in merge_list:
+            tgt_wb.merge_same_cells(sheet_n, cell)
+
+def key_customers():
+    template_path = r'F:\客户风险\teml\重点客户风险排查情况表-模板.xlsx'
+    data_path = r'F:\客户风险\数据'
+    src_list = list(map(lambda x: os.path.join(data_path, x),
+                        ['借新还旧汇总.xlsx', '借新还旧明细.xlsx', '逾期60天至90天对公贷款明细.xlsx']))
+
+    orders = [
+        ['贷款发放行名称', '贷款笔数', '发放金额', '贷款余额'],
+        ['贷款发放行名称', '贷款客户名称', '借新还旧次数', '发放日期', '到期日期',
+         '发放金额', '贷款余额', '欠本天数', '欠息天数', '五级分类', '贷款发放类型'],
+        ['贷款发放行名称', '贷款客户名称', '发放日期', '到期日期', '发放金额',
+         '贷款余额', '欠本天数', '欠息天数', '五级分类', '贷款发放类型']
+    ]
+    date_str = "2025年1月"
+    result_path = os.path.join(r'F:\客户风险\1', f"{date_str}重点客户风险排查情况表.xlsx")
+
     if not os.path.exists(result_path):
         shutil.copy2(template_path, result_path)
-    sht_1 = os.path.join(data_path, '借新还旧汇总.xlsx')
-    sht_2 = os.path.join(data_path, '借新还旧明细.xlsx')
-    sht_3 = os.path.join(data_path, '逾期60天至90天对公贷款明细.xlsx')
-
-    wb1 = Workbook(read_only=True, filepath=sht_1, visible=False)
-    data1 = array2df(wb1.get_used_value(0))
-    wb1.close()
-    data1 = data1.drop(columns=[data1.columns[0]])
-
     wb_tgt = Workbook(read_only=False, filepath=result_path, visible=True)
-    wb_tgt.set_pandas_range(data1, 0, "A4")
-    wb_tgt.doc.sheets[0]['A2'].value = date
+    data = [
+        [src_list[0], wb_tgt, 0, 'A5', date_str, 'A2', orders[0], ['B4', 'C4', 'D4'], None],
+        [src_list[1], wb_tgt, 1, 'A4', date_str, 'A2', orders[1], None, None],
+        [src_list[2], wb_tgt, 2, 'A5', date_str, 'A2', orders[2], ['E4', 'F4'], ['A5']]
+    ]
 
-    wb2 = Workbook(read_only=True, filepath=sht_2, visible=False)
-    data2 = array2df(wb2.get_used_value(0))
-    data2 = reorder_dataframe_columns(data2,
-                                      ['贷款发放行名称', '贷款客户名称', '借新还旧次数', '发放日期', '到期日期',
-                                       '发放金额', '贷款余额', '欠本天数', '欠息天数', '五级分类', '贷款发放类型'])
-    wb2.close()
-    wb_tgt.set_pandas_range(data2, 1, "A4")
-    wb_tgt.doc.sheets[1]['A2'].value = date
-    merge_list = ['A4', 'B4']
-    for ml in merge_list:
-        wb_tgt.merge_same_cells(1, ml)
+    for d in data:
+        gen_xls(*d)
 
     wb_tgt.save()
     wb_tgt.close()
 
 
-if __name__ == '__main__':
-    template_path = r'F:\客户风险\数据\重点客户风险排查情况表-模板.xlsx'
+
+def covering_up_asset_quality():
+    template_path = r'F:\客户风险\teml\疑似掩盖资产质量贷款台账-模板.xlsx'
     data_path = r'F:\客户风险\数据'
-    date = "2025年1月"
-    gen_xls1(template_path, data_path, date)
-    # foo()
-    office_loader = OfficeLoader()
-    office_loader.close()
+    src_list = list(map(lambda x: os.path.join(data_path, x),
+                        ['借新还旧汇总.xlsx', '借新还旧明细.xlsx', '逾期60天至90天对公贷款明细.xlsx']))
+
+
+def main():
+    key_customers()
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
