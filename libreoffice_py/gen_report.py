@@ -1,28 +1,30 @@
 from workbook import Workbook
 from word import Word
-from ooodev.office.calc import Calc
-from myutil import array2df,process_value_to_str
+from myutil import array2df, process_value_to_str
 import pandas as pd
 from typing import Sequence
+import os
+import shutil
+from officeLoader import OfficeLoader
 
 if __name__ == '__main__':
-    wb =Workbook(read_only=True,filepath=r"E:\Twikura\Projects\libreoffice\gen_report\data.xls",visible=False)
+    wb = Workbook(read_only=True, filepath=r"F:\客户风险\数据\data.xls", visible=False)
+    data = wb.get_used_value(0, range_name='A1:C121')
+    df = array2df(data)
+    processed_values = df.apply(process_value_to_str, axis=1)
 
-    df = array2df(wb.get_used_value(0))
-    df['value'] = df.apply(process_value_to_str, axis=1)
     wb.close()
-    word = Word(read_only=False, filepath=r"E:\Twikura\Projects\libreoffice\gen_report\test.doc", visible=True)
+    date_str = "2025年2月"
+    template_file = r"F:\客户风险\teml\teml.doc"
+    result_file = rf"F:\客户风险\202502\{date_str}昭通市银行业客户风险监测报告.doc"
+    if not os.path.exists(result_file):
+        shutil.copy2(template_file, result_file)
+    word = Word(read_only=False, filepath=result_file, visible=True)
     df['label'] = df['label'].apply(lambda x: f"$({x})" if pd.notna(x) and x != '' else x)
     labels_list: Sequence[str] = df['label'].tolist()
-    values_list: Sequence[str] = df['value'].tolist()
-    print(labels_list)
-    print(values_list)
-    # for i in range(len(labels_list)):
-    #     word.replace_word(labels_list[i], values_list[i])
-    # # word.replace_words(['$(b1)'], '111222')
-    word.replace_words(labels_list,values_list)
+    values_list: Sequence[str] = processed_values.tolist()
 
-    # print(r)
-    # word.save()
-    # print(r)
-    #word.close()
+    word.replace_words(labels_list, values_list)
+    # Word.save()
+    office_loader = OfficeLoader()
+    office_loader.close()

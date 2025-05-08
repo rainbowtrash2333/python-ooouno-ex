@@ -2,7 +2,13 @@ from __future__ import annotations
 import pandas as pd
 from typing import Tuple
 from typing import Union
+import os
 import re
+
+
+def is_number_regex(s):
+    pattern = r'^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$'
+    return re.fullmatch(pattern, s.strip()) is not None
 
 
 def number_to_rounded_str(n: Union[int, float], digits: int = 2) -> str:
@@ -21,7 +27,8 @@ def number_to_rounded_str(n: Union[int, float], digits: int = 2) -> str:
             else:
                 return f"{rounded}"
     else:
-        raise ValueError("Input must be int or float")
+        print()
+        raise ValueError(f"Input n = {n} must be int or float")
 
 
 def auto_convert_objects(df):
@@ -30,6 +37,10 @@ def auto_convert_objects(df):
         # 原始列的缺失值数量
         original_nulls = df[col].isnull().sum()
         # 尝试转换为数值
+        # print(f'col:{col}')
+        # print(df[col])
+        # if df[col].shape[1] !=1:
+        #     raise Exception(f"the sheet has {df[col].shape[1]} cols named {col}")
         numeric_series = pd.to_numeric(df[col], errors='coerce')
         new_nulls = numeric_series.isnull().sum()
 
@@ -61,15 +72,19 @@ def array2df(data_set: Tuple[Tuple, ...]) -> pd.DataFrame:
 # 12  /10000     a9         8945017.34
 # 定义处理逻辑的函数
 def process_value_to_str(row: [], decimal_places: int = 2) -> str:
-    if row['type'] == '':  # type为空，不处理
-        return row['value']
-
     value = row['value']
+
     if value == '':  # value为空，无法处理
         return ''
-
-    if not (isinstance(value, int) or isinstance(value, float)):
+    if not is_number_regex(value):
         return value
+
+    if type(value) is str:
+        value = float(value)
+
+    if row['type'] == '':  # type为空，不处理
+        return number_to_rounded_str(value, decimal_places)
+
     # 根据 type 进行运算
     if row['type'] == '增减值':
         return ("增加" if value >= 0 else "减少") + number_to_rounded_str(abs(value), decimal_places)
@@ -79,6 +94,7 @@ def process_value_to_str(row: [], decimal_places: int = 2) -> str:
         if row['type'].startswith(op):
             sign = op
             number = float(row['type'][1:])
+
             result = value
             # print(f"符号: {sign}, 数字: {number}")
             if sign == '/':
@@ -182,3 +198,34 @@ def reorder_dataframe_columns(df, new_order):
     return df[new_order]
 
 
+def check_files_exist(directory: str, file_list: []) -> []:
+    """
+    检查指定目录下是否存在给定的所有文件
+
+    参数:
+        directory (str): 要检查的目录路径
+        file_list (list): 要检查的文件名列表
+
+    返回:
+        dict: 包含每个文件是否存在的结果字典，
+              以及一个总结字段表示是否所有文件都存在
+    """
+    result = {
+        'all_exist': True,
+        'details': {}
+    }
+
+    # 检查目录是否存在
+    if not os.path.isdir(directory):
+        raise ValueError(f"目录不存在: {directory}")
+
+    # 检查每个文件是否存在
+    for filename in file_list:
+        file_path = os.path.join(directory, filename)
+        exists = os.path.isfile(file_path)
+        result['details'][filename] = exists
+
+        if not exists:
+            result['all_exist'] = False
+
+    return result

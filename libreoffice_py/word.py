@@ -91,7 +91,9 @@ class Word:
 
     def replace_words(self, old_words: Sequence[str], new_words: Sequence[str]) -> int:
         replace_n = 0
+
         for i in range(len(old_words)):
+            print(f'replace {old_words[i]} to {new_words[i]}')
             replace_n = replace_n + self.replace_word(old_words[i], new_words[i])
         return replace_n
 

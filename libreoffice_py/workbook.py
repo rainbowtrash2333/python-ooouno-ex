@@ -10,7 +10,7 @@ from ooodev.office.calc import Calc
 from typing import Tuple
 from officeLoader import OfficeLoader
 from ooodev.format.calc.direct.cell.borders import BorderLineKind
-from ooodev.formatters.formatter_table import FormatterTable
+from ooodev.formatters.formatter_table import FormatterTable, FormatTableItem
 from ooodev.utils.color import CommonColor
 from ooodev.format.calc.direct.cell.borders import Side
 from myutil import *
@@ -61,14 +61,16 @@ class Workbook:
         self.doc.close_doc()
         return 0
 
-    def get_used_value(self, sheet_n: int) -> Tuple[Tuple, ...]:
+    def get_used_value(self, sheet_n: int, range_name: str = None) -> Tuple[Tuple, ...]:
 
         used_rng = self.doc.sheets[sheet_n].find_used_range_obj()
         # start_idx = used_rng.start_row_index
         # end_idx = used_rng.end_row_index
         # start_col = used_rng.start_col_index
         # end_idx = used_rng.end_col_index
-        return self.doc.sheets[sheet_n].get_array(range_obj=used_rng)
+        if range_name is None:
+            return self.doc.sheets[sheet_n].get_array(range_obj=used_rng)
+        return self.doc.sheets[sheet_n].get_array(range_name=range_name)
 
     def set_array_value(self, sheet_n: int, values: Tuple[Tuple, ...], range_name: str) -> None:
         self.doc.sheets[sheet_n].set_array(values=values, name=range_name)
@@ -97,7 +99,7 @@ class Workbook:
     # RangeObj
     # CalcCellRange
 
-    def merge_same_cells(self, sheet_n: int, start_cell_name: str) -> None:
+    def merge_same_cells(self, sheet_n: int, start_cell_name: str, merge_list=None) -> None:
         used_rng = self.doc.sheets[sheet_n].find_used_range_obj()
         start_list = convert_cell_name_to_list(start_cell_name)
         end_idx = used_rng.end_row_index
@@ -105,17 +107,56 @@ class Workbook:
         sheet = self.doc.get_sheet(idx=sheet_n)
         start_row_idx = start_list[1]
         next_row_idx = start_row_idx + 1
+        idx = 0
         while next_row_idx <= end_idx + 1:
             start_cell = sheet.get_cell(col=col_idx, row=start_row_idx)
             next_cell = sheet.get_cell(col=col_idx, row=next_row_idx)
-            if start_cell.value == next_cell.value:
+            merge_flag = True
+            if merge_list is not None and idx < len(merge_list) - 1:
+                merge_flag = merge_list[idx] == merge_list[idx + 1]
+                idx = idx + 1
+            if start_cell.value == next_cell.value and merge_flag:
                 next_row_idx = next_row_idx + 1
             else:
                 if next_row_idx > start_row_idx + 1:
                     sheet.get_range(col_start=col_idx, row_start=start_row_idx, col_end=col_idx,
-                                    row_end=next_row_idx - 1).merge_cells()
+                                    row_end=next_row_idx - 1).merge_cells(center=True)
                 start_row_idx = next_row_idx
                 next_row_idx = next_row_idx + 1
+
+    def merge_cells_by_index(self, sheet_n: int, start_cell_name: str, index: []):
+        merge_ranges = []
+        n = len(index)
+        if n == 0:
+            return merge_ranges
+        start_index = 0
+        current_value = index[0]
+        sheet = self.doc.get_sheet(idx=sheet_n)
+        start_cell_name_list = convert_cell_name_to_list(start_cell_name)
+        col_name = get_cell_col_name(start_cell_name)
+        for j in range(1, n):
+            if index[j] != current_value:
+                if start_index <= j - 1:
+                    # 生成合并区域（至少两个单元格才合并）
+                    if (j - 1 - start_index) >= 1:
+                        start_row = start_cell_name_list[1] + 1 + start_index
+                        end_row = start_cell_name_list[1] + 1 + (j - 1)
+                        merge_range = f"{col_name}{start_row}:{col_name}{end_row}"
+                        merge_ranges.append(merge_range)
+                start_index = j
+                current_value = index[j]
+
+        # 处理最后一个区间
+        if start_index <= n - 1:
+            if (n - 1 - start_index) >= 1:
+                start_row = start_cell_name_list[1] + 1 + start_index
+                end_row = start_cell_name_list[1] + 1 + (n - 1)
+                merge_range = f"{col_name}{start_row}:{col_name}{end_row}"
+                merge_ranges.append(merge_range)
+
+        for m in merge_ranges:
+            sheet.get_range(range_name=m).merge_cells(center=True)
+            # return merge_ranges
 
     def sum_col(self, sheet_n: int, sum_cell_name: str, end_cell_name: None | str = None) -> None:
         sheet = self.doc.get_sheet(idx=sheet_n)
@@ -126,12 +167,12 @@ class Workbook:
         if end_cell_name is None:
             used_rng = sheet.find_used_range_obj()
             start_idx = sum_cell_list[1] + 2
-            end_idx = used_rng.end_row_index+1
+            end_idx = used_rng.end_row_index + 1
             range_name = f"{col_name}{start_idx}:{col_name}{end_idx}"
         else:
             used_list = convert_cell_name_to_list(end_cell_name)
-            end_idx = used_list[1]+1
+            end_idx = used_list[1] + 1
             start_idx = sum_cell_list[1] + 2 if sum_cell_list[1] < end_idx else sum_cell_list[1]
             range_name = f"{col_name}{start_idx}:{col_name}{end_idx}"
-        print(f"=SUM({range_name})")
+        # print(f"=SUM({range_name})")
         cell.set_val(f"=SUM({range_name})")
